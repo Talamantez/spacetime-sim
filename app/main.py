@@ -1,6 +1,6 @@
 import os
-from flask import Flask, render_template, jsonify
 import numpy as np
+from flask import Flask, render_template, jsonify, request
 import logging
 
 # Configure logging
@@ -15,16 +15,33 @@ app = Flask(__name__,
            template_folder=template_dir,
            static_folder=static_dir)
 
-logger.debug(f"Template directory: {template_dir}")
-logger.debug(f"Static directory: {static_dir}")
-logger.debug(f"Available templates: {os.listdir(template_dir) if os.path.exists(template_dir) else 'Directory not found'}")
+class SpacetimeSimulator:
+    def __init__(self, name, metric_tensor_func):
+        self.name = name
+        self.metric_tensor_func = metric_tensor_func
+        logger.debug(f"Created spacetime: {name}")
 
-# Sample spacetimes for testing UI
-SPACETIMES = {
-    "Schwarzschild": "Black Hole",
-    "Anti-de Sitter": "AdS",
-    "Gödel": "Time Machine"
-}
+    def metric_tensor(self, coordinates):
+        try:
+            return self.metric_tensor_func(coordinates)
+        except Exception as e:
+            logger.error(f"Error computing metric tensor: {e}")
+            return np.eye(4)  # Return Minkowski space if computation fails
+
+def create_preset_spacetimes():
+    def schwarzschild_metric(coordinates):
+        t, x, y, z = coordinates[:4]
+        r = np.sqrt(x**2 + y**2 + z**2)
+        Rs = 2  # Schwarzschild radius
+        factor = 1 - Rs / (r + Rs)  # Avoid division by zero
+        return np.diag([-factor, 1/factor, r**2, r**2 * np.sin(np.arccos(z/(r+1e-10)))**2])
+
+    return {
+        "Schwarzschild": SpacetimeSimulator("Schwarzschild", schwarzschild_metric),
+    }
+
+# Global variable to store spacetimes
+SPACETIMES = create_preset_spacetimes()
 
 @app.route('/health')
 def health():
@@ -38,14 +55,28 @@ def index():
         logger.error(f"Error rendering template: {e}")
         return str(e), 500
 
-@app.route('/simulate', methods=['POST'])
-def simulate():
-    """Temporary simulation endpoint that just returns success"""
-    return jsonify({
-        'status': 'success',
-        'message': 'Simulation framework coming soon!',
-        'metric_tensor': np.eye(4).tolist()  # Identity matrix for now
-    })
+@app.route('/metric_tensor', methods=['POST'])
+def get_metric():
+    """Test endpoint for metric tensor calculation"""
+    try:
+        spacetime_name = request.form['spacetime']
+        coordinates = np.array([0, 1, 0, 0])  # Test coordinates
+        
+        if spacetime_name not in SPACETIMES:
+            return jsonify({'error': 'Invalid spacetime selected'}), 400
+        
+        spacetime = SPACETIMES[spacetime_name]
+        metric = spacetime.metric_tensor(coordinates).tolist()
+        
+        return jsonify({
+            'status': 'success',
+            'metric_tensor': metric,
+            'coordinates': coordinates.tolist()
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in metric_tensor route: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
