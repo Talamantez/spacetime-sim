@@ -27,10 +27,11 @@ app = Flask(__name__,
 logger.debug("Flask app created")
 
 class SpacetimeSimulator:
-    def __init__(self, name, metric_tensor_func):
+    def __init__(self, name, metric_tensor_func, description=None):
         logger.debug(f"Initializing spacetime: {name}")
         self.name = name
         self.metric_tensor_func = metric_tensor_func
+        self.description = description or name
 
     def metric_tensor(self, coordinates):
         logger.debug(f"Computing metric tensor for {self.name} at {coordinates}")
@@ -41,6 +42,7 @@ class SpacetimeSimulator:
         except Exception as e:
             logger.error(f"Error computing metric tensor: {e}")
             return np.eye(4)
+
 
 def create_preset_spacetimes():
     logger.debug("Creating preset spacetimes")
@@ -53,8 +55,34 @@ def create_preset_spacetimes():
         factor = 1 - Rs / (r + Rs)  # Avoid division by zero
         return np.diag([-factor, 1/factor, r**2, r**2 * np.sin(np.arccos(z/(r+1e-10)))**2])
 
+    def ads_metric(coordinates):
+        logger.debug(f"Computing AdS metric at {coordinates}")
+        t, x, y, z = coordinates[:4]
+        L = 1  # AdS radius (cosmological length scale)
+        r = np.sqrt(x**2 + y**2 + z**2)
+        
+        # Characteristic AdS factor
+        factor = L**2 / (L**2 + r**2)
+        
+        # AdS metric in global coordinates
+        return np.diag([
+            -factor,  # Time component shows characteristic AdS time dilation
+            factor,   # Radial component
+            r**2,     # Angular component 1
+            r**2 * np.sin(np.arccos(z/(r+1e-10)))**2  # Angular component 2
+        ])
+
     spacetimes = {
-        "Schwarzschild": SpacetimeSimulator("Schwarzschild", schwarzschild_metric),
+        "Schwarzschild": SpacetimeSimulator(
+            "Schwarzschild", 
+            schwarzschild_metric,
+            "A black hole spacetime with an event horizon at r = 2M"
+        ),
+        "Anti-de Sitter": SpacetimeSimulator(
+            "Anti-de Sitter", 
+            ads_metric,
+            "A negatively curved spacetime with a cosmological horizon"
+        ),
     }
     logger.debug("Preset spacetimes created successfully")
     return spacetimes

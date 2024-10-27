@@ -1,107 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spacetime Simulator</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100">
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8">Spacetime Simulator</h1>
-        
-        <!-- Test Form -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Test Metric Tensor</h2>
-            <form id="metricForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Select Spacetime</label>
-                    <select name="spacetime" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                        {% for spacetime in spacetimes %}
-                        <option value="{{ spacetime }}">{{ spacetime }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Radial Distance (Rs)</label>
-                    <input type="number" name="radius" value="3.0" min="2.1" max="10" step="0.1"
-                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                
-                <button type="submit" 
-                        class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
-                    Calculate Metric
-                </button>
-            </form>
+      <h1 class="text-3xl font-bold mb-8">Spacetime Simulator</h1>
+
+      <!-- Test Form -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Test Metric Tensor</h2>
+        <form id="metricForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Select Spacetime</label
+            >
+            <select
+              name="spacetime"
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            >
+              {% for spacetime in spacetimes %}
+              <option value="{{ spacetime }}">{{ spacetime }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Radial Distance (Rs)</label
+            >
+            <input
+              type="number"
+              name="radius"
+              value="3.0"
+              min="2.1"
+              max="10"
+              step="0.1"
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+          >
+            Calculate Metric
+          </button>
+        </form>
+      </div>
+
+      <!-- Results Section -->
+      <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
+        <h2 class="text-xl font-semibold mb-4">Spacetime Properties</h2>
+
+        <!-- Metric Display -->
+        <div class="mb-6">
+          <h3 class="font-medium mb-2">Metric Tensor</h3>
+          <div
+            id="metricDisplay"
+            class="bg-gray-50 p-4 rounded-lg font-mono text-sm"
+          ></div>
         </div>
-        
-        <!-- Results Section -->
-        <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Spacetime Properties</h2>
-            
-            <!-- Metric Display -->
-            <div class="mb-6">
-                <h3 class="font-medium mb-2">Metric Tensor</h3>
-                <div id="metricDisplay" class="bg-gray-50 p-4 rounded-lg font-mono text-sm"></div>
-            </div>
-            
-            <!-- Physics Properties -->
-            <div id="physics" class="space-y-2">
-                <h3 class="font-medium mb-2">Physical Effects</h3>
-                <div id="timeDilation" class="text-sm"></div>
-                <div id="spaceCurvature" class="text-sm"></div>
-                <div id="escapeVelocity" class="text-sm"></div>
-            </div>
+        <div class="mb-6">
+          <h3 class="font-medium mb-2">Visual Representation</h3>
+          <div class="grid grid-cols-4 gap-1">
+            {% for i in range(4) %} {% for j in range(4) %}
+            <div
+              id="cell_{{i}}_{{j}}"
+              class="h-12 rounded flex items-center justify-center text-white font-mono text-sm"
+            ></div>
+            {% endfor %} {% endfor %}
+          </div>
         </div>
+        <!-- Physics Properties -->
+        <div id="physics" class="space-y-2">
+          <h3 class="font-medium mb-2">Physical Effects</h3>
+          <div id="timeDilation" class="text-sm"></div>
+          <div id="spaceCurvature" class="text-sm"></div>
+          <div id="escapeVelocity" class="text-sm"></div>
+        </div>
+      </div>
     </div>
 
     <script>
-        document.getElementById('metricForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            try {
-                const response = await fetch('/metric_tensor', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                // Show results
-                document.getElementById('results').classList.remove('hidden');
-                
-                // Format metric tensor as a nice grid
-                const metric = data.metric_tensor;
-                const metricHtml = metric.map(row => 
-                    row.map(val => val.toFixed(3).padStart(8)).join(' ')
-                ).join('<br>');
-                document.getElementById('metricDisplay').innerHTML = metricHtml;
-                
-                // Calculate and display physical effects
-                const r = parseFloat(formData.get('radius'));
-                const timeDilation = 1/Math.sqrt(1-2/r);
-                const spaceCurvature = 1/(1-2/r);
-                const escapeVelocity = Math.sqrt(2/r) * 299792; // in km/s
-                
-                document.getElementById('timeDilation').textContent = 
-                    `Time Dilation: ${timeDilation.toFixed(2)}x slower`;
-                document.getElementById('spaceCurvature').textContent = 
-                    `Space Curvature: ${spaceCurvature.toFixed(2)}x stretched`;
-                document.getElementById('escapeVelocity').textContent = 
-                    `Escape Velocity: ${escapeVelocity.toFixed(0)} km/s`;
-                
-            } catch (error) {
-                alert('Error: ' + error);
+      document
+        .getElementById("metricForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const formData = new FormData(form);
+
+          try {
+            const response = await fetch("/metric_tensor", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+              alert(data.error);
+              return;
             }
+
+            // Add this call where you process the results
+            updateVisualization(data.metric_tensor);
+            // Show results
+            document.getElementById("results").classList.remove("hidden");
+
+            // Format metric tensor as a nice grid
+            const metric = data.metric_tensor;
+            const metricHtml = metric
+              .map((row) =>
+                row.map((val) => val.toFixed(3).padStart(8)).join(" ")
+              )
+              .join("<br>");
+            document.getElementById("metricDisplay").innerHTML = metricHtml;
+
+            // Calculate and display physical effects
+            const r = parseFloat(formData.get("radius"));
+            const timeDilation = 1 / Math.sqrt(1 - 2 / r);
+            const spaceCurvature = 1 / (1 - 2 / r);
+            const escapeVelocity = Math.sqrt(2 / r) * 299792; // in km/s
+
+            document.getElementById(
+              "timeDilation"
+            ).textContent = `Time Dilation: ${timeDilation.toFixed(2)}x slower`;
+            document.getElementById(
+              "spaceCurvature"
+            ).textContent = `Space Curvature: ${spaceCurvature.toFixed(
+              2
+            )}x stretched`;
+            document.getElementById(
+              "escapeVelocity"
+            ).textContent = `Escape Velocity: ${escapeVelocity.toFixed(
+              0
+            )} km/s`;
+          } catch (error) {
+            alert("Error: " + error);
+          }
         });
+      // Add this to your form submission handler where you process the metric tensor
+      function updateVisualization(metric) {
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            const cell = document.getElementById(`cell_${i}_${j}`);
+            const value = metric[i][j];
+
+            // Calculate color intensity based on value
+            const intensity = Math.min(Math.abs(value), 1);
+            const hue = value < 0 ? 0 : 240; // Red for negative, Blue for positive
+            const color =
+              value === 0
+                ? "#444444"
+                : `hsla(${hue}, 100%, ${50 + intensity * 30}%, ${
+                    0.3 + intensity * 0.7
+                  })`;
+
+            cell.style.backgroundColor = color;
+            cell.textContent = value.toFixed(2);
+          }
+        }
+      }
     </script>
-</body>
+  </body>
 </html>
