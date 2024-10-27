@@ -1,0 +1,129 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacetime Simulator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Spacetime Simulator</h1>
+        
+        <!-- Simulation Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Run Simulation</h2>
+            <form id="simulationForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Select Spacetime</label>
+                    <select name="spacetime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        {% for spacetime in spacetimes %}
+                        <option value="{{ spacetime }}">{{ spacetime }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Number of Steps</label>
+                    <input type="number" name="num_steps" value="200" min="50" max="500" 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+                    Run Simulation
+                </button>
+            </form>
+        </div>
+        
+        <!-- Custom Spacetime Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Create Custom Spacetime</h2>
+            <form id="customSpacetimeForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Spacetime Name</label>
+                    <input type="text" name="name" required 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Metric Tensor Function</label>
+                    <textarea name="metric_function" rows="4" required 
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                              placeholder="np.diag([-1, 1, r**2, r**2 * np.sin(theta)**2])"></textarea>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600">
+                    Create Spacetime
+                </button>
+            </form>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">Simulation Results</h2>
+            <div id="videoContainer" class="aspect-w-16 aspect-h-9">
+                <video id="simulationVideo" controls class="w-full">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('simulationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('/simulate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                document.getElementById('results').classList.remove('hidden');
+                const video = document.getElementById('simulationVideo');
+                video.src = data.video_path;
+                video.load();
+            } catch (error) {
+                alert('Error running simulation: ' + error);
+            }
+        });
+
+        document.getElementById('customSpacetimeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('/custom_spacetime', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                alert(data.message);
+                location.reload(); // Refresh to show new spacetime in dropdown
+            } catch (error) {
+                alert('Error creating spacetime: ' + error);
+            }
+        });
+    </script>
+</body>
+</html>
