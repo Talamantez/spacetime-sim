@@ -1,129 +1,287 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spacetime Simulator</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100">
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  </head>
+  <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8">Spacetime Simulator</h1>
-        
-        <!-- Simulation Form -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Run Simulation</h2>
-            <form id="simulationForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Select Spacetime</label>
-                    <select name="spacetime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        {% for spacetime in spacetimes %}
-                        <option value="{{ spacetime }}">{{ spacetime }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Number of Steps</label>
-                    <input type="number" name="num_steps" value="200" min="50" max="500" 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                
-                <button type="submit" 
-                        class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
-                    Run Simulation
-                </button>
-            </form>
-        </div>
-        
-        <!-- Custom Spacetime Form -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Create Custom Spacetime</h2>
-            <form id="customSpacetimeForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Spacetime Name</label>
-                    <input type="text" name="name" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Metric Tensor Function</label>
-                    <textarea name="metric_function" rows="4" required 
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                              placeholder="np.diag([-1, 1, r**2, r**2 * np.sin(theta)**2])"></textarea>
-                </div>
-                
-                <button type="submit" 
-                        class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600">
-                    Create Spacetime
-                </button>
-            </form>
-        </div>
-        
-        <!-- Results Section -->
-        <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Simulation Results</h2>
-            <div id="videoContainer" class="aspect-w-16 aspect-h-9">
-                <video id="simulationVideo" controls class="w-full">
-                    Your browser does not support the video tag.
-                </video>
+      <h1 class="text-3xl font-bold mb-8 text-gray-800">Spacetime Simulator</h1>
+
+      <!-- Simulation Form -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Run Simulation</h2>
+        <form id="simulationForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Select Spacetime</label
+            >
+            <select
+              name="spacetime"
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            >
+              {% for spacetime in spacetimes %}
+              <option value="{{ spacetime }}">{{ spacetime }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Number of Steps</label
+            >
+            <input
+              type="number"
+              name="num_steps"
+              value="200"
+              min="50"
+              max="500"
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Initial Position (x, y, z)</label
+            >
+            <div class="grid grid-cols-3 gap-2">
+              <input
+                type="number"
+                name="pos_x"
+                value="5"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
+              <input
+                type="number"
+                name="pos_y"
+                value="0"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
+              <input
+                type="number"
+                name="pos_z"
+                value="0"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
             </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Initial Velocity (vx, vy, vz)</label
+            >
+            <div class="grid grid-cols-3 gap-2">
+              <input
+                type="number"
+                name="vel_x"
+                value="0"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
+              <input
+                type="number"
+                name="vel_y"
+                value="0.5"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
+              <input
+                type="number"
+                name="vel_z"
+                value="0"
+                step="0.1"
+                class="p-2 border border-gray-300 rounded-md shadow-sm"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors"
+          >
+            Run Simulation
+          </button>
+        </form>
+      </div>
+
+      <!-- Custom Spacetime Form -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">
+          Create Custom Spacetime
+        </h2>
+        <form id="customSpacetimeForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Spacetime Name</label
+            >
+            <input
+              type="text"
+              name="name"
+              required
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Metric Tensor Function</label
+            >
+            <textarea
+              name="metric_function"
+              rows="4"
+              required
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono"
+              placeholder="np.diag([-1, 1, r**2, r**2 * np.sin(theta)**2])"
+            ></textarea>
+            <p class="mt-1 text-sm text-gray-500">
+              Define the metric tensor as a function that takes coordinates
+              (t,x,y,z) and returns a 4x4 numpy array.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors"
+          >
+            Create Spacetime
+          </button>
+        </form>
+      </div>
+
+      <!-- Results Section -->
+      <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">
+          Simulation Results
+        </h2>
+        <div id="videoContainer" class="aspect-w-16 aspect-h-9">
+          <video
+            id="simulationVideo"
+            controls
+            class="w-full rounded-lg shadow-lg"
+          >
+            Your browser does not support the video tag.
+          </video>
         </div>
+
+        <!-- Metric Tensor Visualization -->
+        <div id="metricTensor" class="mt-8">
+          <h3 class="text-lg font-semibold mb-2 text-gray-700">
+            Metric Tensor
+          </h3>
+          <div
+            id="metricDisplay"
+            class="font-mono text-sm bg-gray-50 p-4 rounded-lg"
+          ></div>
+        </div>
+      </div>
     </div>
 
     <script>
-        document.getElementById('simulationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            try {
-                const response = await fetch('/simulate', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                document.getElementById('results').classList.remove('hidden');
-                const video = document.getElementById('simulationVideo');
-                video.src = data.video_path;
-                video.load();
-            } catch (error) {
-                alert('Error running simulation: ' + error);
+      document
+        .getElementById("simulationForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const formData = new FormData(form);
+
+          try {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = "Running Simulation...";
+
+            const response = await fetch("/simulate", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+              alert(data.error);
+              return;
             }
+
+            document.getElementById("results").classList.remove("hidden");
+            const video = document.getElementById("simulationVideo");
+            video.src = data.video_path;
+            video.load();
+
+            // Update metric tensor display if available
+            if (data.metric_tensor) {
+              const metricDisplay = document.getElementById("metricDisplay");
+              metricDisplay.innerHTML = formatMetricTensor(data.metric_tensor);
+            }
+          } catch (error) {
+            alert("Error running simulation: " + error);
+          } finally {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = false;
+            submitButton.textContent = "Run Simulation";
+          }
         });
 
-        document.getElementById('customSpacetimeForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            try {
-                const response = await fetch('/custom_spacetime', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                alert(data.message);
-                location.reload(); // Refresh to show new spacetime in dropdown
-            } catch (error) {
-                alert('Error creating spacetime: ' + error);
+      document
+        .getElementById("customSpacetimeForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const formData = new FormData(form);
+
+          try {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = "Creating...";
+
+            const response = await fetch("/custom_spacetime", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+              alert(data.error);
+              return;
             }
+
+            alert(data.message);
+            location.reload();
+          } catch (error) {
+            alert("Error creating spacetime: " + error);
+          } finally {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = false;
+            submitButton.textContent = "Create Spacetime";
+          }
         });
+
+      function formatMetricTensor(tensor) {
+        return tensor
+          .map((row) => row.map((val) => val.toFixed(3).padStart(8)).join(" "))
+          .join("<br>");
+      }
+
+      async function cleanupOldFiles() {
+        try {
+          await fetch("/cleanup", { method: "POST" });
+        } catch (error) {
+          console.error("Cleanup error:", error);
+        }
+      }
+
+      // Clean up every hour
+      setInterval(cleanupOldFiles, 3600000);
+      // Also clean up when loading the page
+      cleanupOldFiles();
     </script>
-</body>
+  </body>
 </html>

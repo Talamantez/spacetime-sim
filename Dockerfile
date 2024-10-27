@@ -1,4 +1,3 @@
-# Use Python 3.11 instead of 3.9
 FROM python:3.11-slim
 
 # Install system dependencies including FFmpeg and OpenCV dependencies
@@ -12,27 +11,27 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
 COPY . .
 
-# Create the outputs directory
+# Create necessary directories
 RUN mkdir -p static/outputs
 
-# Make port 5000 available
-EXPOSE 5000
-
-# Define environment variable
+# Environment variables
 ENV PORT=5000
 ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Run with optimized settings for computation-heavy tasks
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", \
+     "--timeout", "300", \
+     "--workers", "2", \
+     "--threads", "4", \
+     "--worker-class", "gthread", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--log-level", "debug", \
+     "app:app"]

@@ -1,0 +1,14 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "gunicorn --bind 0.0.0.0:$PORT --timeout 300 --workers 2 --threads 4 --worker-class gthread --worker-tmp-dir /dev/shm --log-level debug app:app"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "web"
+autoscaling.enabled = false

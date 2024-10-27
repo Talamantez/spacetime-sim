@@ -3,13 +3,31 @@ from flask import Flask, render_template, request, jsonify, send_file
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib
-matplotlib.use('Agg')  # Required for headless environments
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation, writers
-from datetime import datetime
+import time
+import logging
+import glob
 
-app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__,
+           template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates')),
+           static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static')))
+
+
+# Log the template folder path
+logger.debug(f"Template folder path: {app.template_folder}")
+logger.debug(f"Current working directory: {os.getcwd()}")
+logger.debug(f"Directory contents: {os.listdir('.')}")
+if os.path.exists('templates'):
+    logger.debug(f"Templates directory contents: {os.listdir('templates')}")
+
 
 # Configure for Railway
 PORT = os.environ.get('PORT', 5000)
@@ -22,7 +40,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Create an empty .gitkeep file in the outputs directory
 with open(os.path.join(app.config['UPLOAD_FOLDER'], '.gitkeep'), 'w') as f:
     pass
-
 class SpacetimeSimulator:
     def __init__(self, name, metric_tensor_func, dimensions=4):
         self.name = name
@@ -68,8 +85,10 @@ class SpacetimeSimulator:
         return solution
 
     def generate_simulation_plot(self, initial_positions, initial_velocities, num_steps):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"{app.config['UPLOAD_FOLDER']}/{self.name}_{timestamp}.mp4"
+        # Use timestamp for unique filename
+        timestamp = int(time.time())
+        output_file = f"static/outputs/{self.name}_{timestamp}.mp4"
+        output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), output_file)
         
         fig = plt.figure(figsize=(15, 10))
         ax1 = fig.add_subplot(121, projection='3d')
@@ -101,17 +120,30 @@ class SpacetimeSimulator:
 
         anim = FuncAnimation(fig, update, frames=num_steps, interval=50, blit=False)
         writer = writers['ffmpeg'](fps=15, metadata=dict(artist='SpacetimeSimulator'), bitrate=1800)
-        anim.save(output_file, writer=writer)
-        plt.close()
         
-        return output_file
+        try:
+            # Ensure the output directory exists
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # Save the animation
+            anim.save(output_path, writer=writer)
+            plt.close()
+            
+            # Return the relative path for the web server
+            return output_file
+            
+        except Exception as e:
+            logger.error(f"Error generating simulation: {str(e)}")
+            plt.close()
+            raise e
+
 
 def create_preset_spacetimes():
     def schwarzschild_metric(coordinates):
         t, x, y, z = coordinates[:4]
         r = np.sqrt(x**2 + y**2 + z**2)
         Rs = 2  # Schwarzschild radius
-        factor = 1 - Rs / (r + Rs)
+        factor = 1 - Rs / (r + Rs)  # Avoid division by zero
         return np.diag([-factor, 1/factor, r**2, r**2 * np.sin(np.arccos(z/(r+1e-10)))**2])
 
     def ads_metric(coordinates):
@@ -141,8 +173,12 @@ def create_preset_spacetimes():
 # Global variable to store spacetimes
 SPACETIMES = create_preset_spacetimes()
 
+
 @app.route('/')
 def index():
+    logger.debug("Handling index route")
+    template_list = app.jinja_loader.list_templates()
+    logger.debug(f"Available templates: {template_list}")
     return render_template('index.html', spacetimes=SPACETIMES.keys())
 
 @app.route('/simulate', methods=['POST'])
@@ -151,32 +187,42 @@ def simulate():
         spacetime_name = request.form['spacetime']
         num_steps = int(request.form.get('num_steps', 200))
         
+        # Get initial conditions from form
+        pos_x = float(request.form.get('pos_x', 5))
+        pos_y = float(request.form.get('pos_y', 0))
+        pos_z = float(request.form.get('pos_z', 0))
+        
+        vel_x = float(request.form.get('vel_x', 0))
+        vel_y = float(request.form.get('vel_y', 0.5))
+        vel_z = float(request.form.get('vel_z', 0))
+        
         if spacetime_name not in SPACETIMES:
             return jsonify({'error': 'Invalid spacetime selected'}), 400
         
         spacetime = SPACETIMES[spacetime_name]
         
-        # Default initial conditions
+        # Use the form values for initial conditions
         initial_positions = [
-            np.array([0, 5, 0, 0]),
-            np.array([0, -5, 0, 0]),
-            np.array([0, 0, 5, 0])
+            np.array([0, pos_x, pos_y, pos_z])
         ]
         initial_velocities = [
-            np.array([1, 0, 0.5, 0]),
-            np.array([1, 0, -0.5, 0]),
-            np.array([1, -0.5, 0, 0])
+            np.array([1, vel_x, vel_y, vel_z])
         ]
         
         output_file = spacetime.generate_simulation_plot(
             initial_positions, initial_velocities, num_steps)
         
+        # Get current metric tensor for visualization
+        metric = spacetime.metric_tensor(initial_positions[0]).tolist()
+        
         return jsonify({
             'status': 'success',
-            'video_path': output_file
+            'video_path': '/' + output_file,
+            'metric_tensor': metric
         })
     
     except Exception as e:
+        logger.error(f"Error in simulate route: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/custom_spacetime', methods=['POST'])
@@ -186,7 +232,6 @@ def create_custom_spacetime():
         metric_func_str = request.form['metric_function']
         
         # Create the metric function from the string
-        # Note: This is potentially dangerous in a production environment
         metric_func = eval(f"lambda coordinates: {metric_func_str}")
         
         # Create and store the new spacetime
@@ -198,7 +243,34 @@ def create_custom_spacetime():
         })
     
     except Exception as e:
+        logger.error(f"Error creating custom spacetime: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/cleanup', methods=['POST'])
+def cleanup_old_files():
+    """Clean up simulation files older than 1 hour"""
+    try:
+        # Get all mp4 files in the outputs directory
+        output_dir = os.path.join(app.static_folder, 'outputs')
+        files = glob.glob(os.path.join(output_dir, '*.mp4'))
+        
+        # Current time
+        now = datetime.now()
+        
+        # Delete files older than 1 hour
+        for f in files:
+            file_time = datetime.fromtimestamp(os.path.getctime(f))
+            if now - file_time > timedelta(hours=1):
+                try:
+                    os.remove(f)
+                    logger.debug(f"Deleted old file: {f}")
+                except OSError as e:
+                    logger.error(f"Error deleting {f}: {e}")
+        
+        return jsonify({'status': 'success', 'message': 'Cleanup completed'})
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
