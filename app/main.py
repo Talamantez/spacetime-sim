@@ -272,5 +272,12 @@ def cleanup_old_files():
         logger.error(f"Error during cleanup: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': time.time()
+    })
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

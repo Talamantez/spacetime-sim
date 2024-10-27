@@ -8,6 +8,7 @@ RUN apt-get update && \
     libxext6 \
     libxrender-dev \
     libglib2.0-0 \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,12 +26,19 @@ RUN mkdir -p static/outputs
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Use PORT environment variable with a default
-CMD gunicorn --bind 0.0.0.0:${PORT:-5000} \
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-5000}/ || exit 1
+
+# Use PORT environment variable with a default and more explicit binding
+CMD gunicorn \
+    --bind "0.0.0.0:${PORT:-5000}" \
     --timeout 300 \
     --workers 2 \
     --threads 4 \
     --worker-class gthread \
     --worker-tmp-dir /dev/shm \
     --log-level debug \
+    --capture-output \
+    --enable-stdio-inheritance \
     app:app
