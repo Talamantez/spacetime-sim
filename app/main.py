@@ -175,11 +175,8 @@ SPACETIMES = create_preset_spacetimes()
 
 
 @app.route('/')
-def index():
-    logger.debug("Handling index route")
-    template_list = app.jinja_loader.list_templates()
-    logger.debug(f"Available templates: {template_list}")
-    return render_template('index.html', spacetimes=SPACETIMES.keys())
+def root():
+    return 'Spacetime Simulator', 200
 
 @app.route('/simulate', methods=['POST'])
 def simulate():
@@ -273,11 +270,8 @@ def cleanup_old_files():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': time.time()
-    })
+def health():
+    return 'OK', 200
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
