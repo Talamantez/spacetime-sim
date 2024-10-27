@@ -5,3 +5,5 @@ matplotlib==3.7.2
 gunicorn==21.2.0
 ffmpeg-python==0.2.0
 opencv-python-headless==4.8.0.76
+setuptools>=65.5.1
+wheel>=0.38.4
