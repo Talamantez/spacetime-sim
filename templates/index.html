@@ -23,6 +23,12 @@
                     </select>
                 </div>
                 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Radial Distance (Rs)</label>
+                    <input type="number" name="radius" value="3.0" min="2.1" max="10" step="0.1"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                
                 <button type="submit" 
                         class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
                     Calculate Metric
@@ -32,8 +38,21 @@
         
         <!-- Results Section -->
         <div id="results" class="bg-white rounded-lg shadow-md p-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Results</h2>
-            <pre id="metricDisplay" class="bg-gray-50 p-4 rounded-lg font-mono text-sm"></pre>
+            <h2 class="text-xl font-semibold mb-4">Spacetime Properties</h2>
+            
+            <!-- Metric Display -->
+            <div class="mb-6">
+                <h3 class="font-medium mb-2">Metric Tensor</h3>
+                <div id="metricDisplay" class="bg-gray-50 p-4 rounded-lg font-mono text-sm"></div>
+            </div>
+            
+            <!-- Physics Properties -->
+            <div id="physics" class="space-y-2">
+                <h3 class="font-medium mb-2">Physical Effects</h3>
+                <div id="timeDilation" class="text-sm"></div>
+                <div id="spaceCurvature" class="text-sm"></div>
+                <div id="escapeVelocity" class="text-sm"></div>
+            </div>
         </div>
     </div>
 
@@ -56,9 +75,29 @@
                     return;
                 }
                 
+                // Show results
                 document.getElementById('results').classList.remove('hidden');
-                document.getElementById('metricDisplay').textContent = 
-                    JSON.stringify(data, null, 2);
+                
+                // Format metric tensor as a nice grid
+                const metric = data.metric_tensor;
+                const metricHtml = metric.map(row => 
+                    row.map(val => val.toFixed(3).padStart(8)).join(' ')
+                ).join('<br>');
+                document.getElementById('metricDisplay').innerHTML = metricHtml;
+                
+                // Calculate and display physical effects
+                const r = parseFloat(formData.get('radius'));
+                const timeDilation = 1/Math.sqrt(1-2/r);
+                const spaceCurvature = 1/(1-2/r);
+                const escapeVelocity = Math.sqrt(2/r) * 299792; // in km/s
+                
+                document.getElementById('timeDilation').textContent = 
+                    `Time Dilation: ${timeDilation.toFixed(2)}x slower`;
+                document.getElementById('spaceCurvature').textContent = 
+                    `Space Curvature: ${spaceCurvature.toFixed(2)}x stretched`;
+                document.getElementById('escapeVelocity').textContent = 
+                    `Escape Velocity: ${escapeVelocity.toFixed(0)} km/s`;
+                
             } catch (error) {
                 alert('Error: ' + error);
             }
