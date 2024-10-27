@@ -22,16 +22,15 @@ COPY . .
 RUN mkdir -p static/outputs
 
 # Environment variables
-ENV PORT=5000
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Run with optimized settings for computation-heavy tasks
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", \
-     "--timeout", "300", \
-     "--workers", "2", \
-     "--threads", "4", \
-     "--worker-class", "gthread", \
-     "--worker-tmp-dir", "/dev/shm", \
-     "--log-level", "debug", \
-     "app:app"]
+# Use PORT environment variable with a default
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} \
+    --timeout 300 \
+    --workers 2 \
+    --threads 4 \
+    --worker-class gthread \
+    --worker-tmp-dir /dev/shm \
+    --log-level debug \
+    app:app
